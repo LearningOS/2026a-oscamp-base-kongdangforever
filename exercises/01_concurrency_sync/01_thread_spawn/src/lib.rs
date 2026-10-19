@@ -236,7 +236,7 @@ pub fn increment_thread_local() -> usize {
 pub fn scoped_slice_sum(a: &[i32], b: &[i32]) -> (i32, i32) {
     // TODO: Use thread::scope to spawn two threads
     // TODO: Each thread sums its slice
-    // TODO: Wait for both threads and return the results
+    // TODO: Wait for both threads and return the resultsh
     thread::scope(|scope|{
         let ta=scope.spawn(move || {
             a.iter().sum()
