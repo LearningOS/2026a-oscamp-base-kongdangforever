@@ -19,7 +19,26 @@ pub async fn producer_consumer(items: Vec<String>) -> Vec<String> {
     // TODO: Spawn producer task: iterate through items, send each one
     // TODO: Spawn consumer task: loop recv until channel closes, collect results
     // TODO: Wait for consumer to complete and return results
-    todo!()
+    let capacity=items.len().max(1);
+    let (tx,mut rx)=mpsc::channel::<String>(capacity);
+
+    let producer=tokio::spawn(async move{
+        for item in items{
+            tx.send(item).await.expect("recevice was dropped");
+        }
+    });
+
+    let consumer=tokio::spawn(async move{
+        let mut results=Vec::new();
+
+        while let Some(item)=rx.recv().await{
+            results.push(item);
+        }
+        results
+    });
+
+    producer.await.expect("producer task should complete");
+    consumer.await.expect("consumer task should complete")
 }
 
 /// Fan‑in pattern: multiple producers, one consumer.
@@ -31,7 +50,34 @@ pub async fn fan_in(n_producers: usize) -> Vec<String> {
     //       Each sends format!("producer {id}: message")
     // TODO: Drop the original sender (important! otherwise channel won't close)
     // TODO: Consumer loops receiving, collects and sorts
-    todo!()
+    let capacity=n_producers.max(1);
+    let (tx,mut rx)=mpsc::channel::<String>(capacity);
+
+    let mut producer_handles=Vec::with_capacity(n_producers);
+    for id in 0..n_producers{
+        let producer_tx=tx.clone();
+
+        let handle=tokio::spawn(async move{
+            let message=format!("producer {id}: message");
+
+            producer_tx.send(message).await.expect("receiver was dropped");
+        });
+
+        producer_handles.push(handle);
+    }
+    drop(tx);
+
+    let mut results=Vec::with_capacity(n_producers);
+
+    while let Some(message)=rx.recv().await{
+        results.push(message);
+    }
+
+    for handle in producer_handles{
+        handle.await.expect("producer task should complete");
+    }
+    results.sort();
+    results
 }
 
 #[cfg(test)]
